@@ -35,6 +35,10 @@ expo-env.d.ts
 packages/shared/dist/
 packages/shared/*.tsbuildinfo
 
+# === Supabase ===
+.branches
+.temp
+
 # === Arduino (firmware) ===
 apps/firmware/.pio/
 apps/firmware/.vscode/
