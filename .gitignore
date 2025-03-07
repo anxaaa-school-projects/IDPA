@@ -1,0 +1,56 @@
+# === Root ===
+.DS_Store
+*.log
+node_modules/
+dist/
+.turbo/
+.env
+.env.local
+*.pem
+
+# === Debug ===
+npm-debug.*
+yarn-debug.*
+yarn-error.*
+
+# === Native (mobile) ===
+.kotlin/
+*.orig.*
+*.jks
+*.p8
+*.p12
+*.key
+*.mobileprovision
+
+# === Expo (mobile) ===
+.expo/
+dist/
+web-build/
+expo-env.d.ts
+
+# === Metro (mobile) ===
+.metro-health-check*
+
+# === TypeScript (shared) ===
+packages/shared/dist/
+packages/shared/*.tsbuildinfo
+
+# === Arduino (firmware) ===
+apps/firmware/.pio/
+apps/firmware/.vscode/
+apps/firmware/build/
+apps/firmware/lib/
+
+# === IDE/Editor ===
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# === PlatformIO d ===
+.pioenvs/
+.piolibdeps/
+
+# === OS Junk ===
+Thumbs.db
+ehthumbs.db
