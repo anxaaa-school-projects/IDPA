@@ -1,75 +1,167 @@
-import { Image } from 'expo-image';
-import { Platform, StyleSheet } from 'react-native';
+import { Colors } from "@/assets/styles/Colors";
+import { createStyles } from "@/assets/styles/Stylesheet";
+import { ThemedText } from "@/components/ThemedText";
+import { SUPABASE_ANON_KEY, SUPABASE_URL } from "@env";
+import { createClient } from "@supabase/supabase-js";
+import { useFocusEffect } from "expo-router";
+import { useCallback, useState } from "react";
+import {Dimensions, Text, View} from "react-native";
+import Svg, { Path } from "react-native-svg";
 
-import { HelloWave } from '@/components/HelloWave';
-import ParallaxScrollView from '@/components/ParallaxScrollView';
-import { ThemedText } from '@/components/ThemedText';
-import { ThemedView } from '@/components/ThemedView';
+const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+type DistanceMeasurement = {
+  id: number;
+  deviceId: string;
+  distance: number;
+  timestamp: string;
+};
 
 export default function HomeScreen() {
+  const styles = createStyles();
+  const { width } = Dimensions.get("window");
+
+  const [distanceMeasurements, setDistanceMeasurements] = useState<
+    DistanceMeasurement[]
+  >([]);
+  const [loading, setLoading] = useState(true);
+
+  const fetchDistanceMeasurements = async () => {
+    const { data, error } = await supabase
+      .from("device_data")
+      .select("*")
+      .order("timestamp", { ascending: false })
+      .limit(10);
+
+    if (error) {
+      console.error("Error fetching data:", error);
+    } else {
+      setDistanceMeasurements(data);
+    }
+
+    setLoading(false);
+  };
+
+  // Refresh accounts every time someone navigates to this page.
+  useFocusEffect(
+    useCallback(() => {
+      fetchDistanceMeasurements();
+    }, [])
+  );
+
+  const formatDateTime = (dateString: string): string => {
+    const date = new Date(dateString);
+    const dd = String(date.getDate()).padStart(2, '0');
+    const MM = String(date.getMonth() + 1).padStart(2, '0');
+    const yy = String(date.getFullYear()).slice(-2);
+    const hh = String(date.getHours()).padStart(2, '0');
+    const mm = String(date.getMinutes()).padStart(2, '0');
+    return `${dd}.${MM}.${yy} ${hh}:${mm}`;
+  }
+
+  const averageDistance =
+    distanceMeasurements.length > 0
+      ? distanceMeasurements.reduce(
+          (sum, measurement) => sum + measurement.distance,
+          0
+        ) / distanceMeasurements.length
+      : 0;
+
+  const fillPercentage = Math.max(
+    0,
+    Math.min(100, 100 - (averageDistance / 80) * 100)
+  );
+
+  const latestReading = distanceMeasurements[0];
+
   return (
-    <ParallaxScrollView
-      headerBackgroundColor={{ light: '#A1CEDC', dark: '#1D3D47' }}
-      headerImage={
-        <Image
-          source={require('@/assets/images/partial-react-logo.png')}
-          style={styles.reactLogo}
+    <View style={styles.body}>
+      {/* Decorative header */}
+      <Svg
+        width={width}
+        height={150}
+        viewBox="0 0 1440 320"
+        preserveAspectRatio="none"
+      >
+        <Path
+          fill={Colors.primary}
+          d="M0,96L60,112C120,128,240,160,360,165.3C480,171,600,149,720,138.7C840,128,960,128,1080,138.7C1200,149,1320,171,1380,181.3L1440,192L1440,0L1380,0C1320,0,1200,0,1080,0C960,0,840,0,720,0C600,0,480,0,360,0C240,0,120,0,60,0L0,0Z"
         />
-      }>
-      <ThemedView style={styles.titleContainer}>
-        <ThemedText type="title">Welcome!</ThemedText>
-        <HelloWave />
-      </ThemedView>
-      <ThemedView style={styles.stepContainer}>
-        <ThemedText type="subtitle">Step 1: Try it</ThemedText>
-        <ThemedText>
-          Edit <ThemedText type="defaultSemiBold">app/(tabs)/index.tsx</ThemedText> to see changes.
-          Press{' '}
-          <ThemedText type="defaultSemiBold">
-            {Platform.select({
-              ios: 'cmd + d',
-              android: 'cmd + m',
-              web: 'F12',
-            })}
-          </ThemedText>{' '}
-          to open developer tools.
-        </ThemedText>
-      </ThemedView>
-      <ThemedView style={styles.stepContainer}>
-        <ThemedText type="subtitle">Step 2: Explore</ThemedText>
-        <ThemedText>
-          {`Tap the Explore tab to learn more about what's included in this starter app.`}
-        </ThemedText>
-      </ThemedView>
-      <ThemedView style={styles.stepContainer}>
-        <ThemedText type="subtitle">Step 3: Get a fresh start</ThemedText>
-        <ThemedText>
-          {`When you're ready, run `}
-          <ThemedText type="defaultSemiBold">npm run reset-project</ThemedText> to get a fresh{' '}
-          <ThemedText type="defaultSemiBold">app</ThemedText> directory. This will move the current{' '}
-          <ThemedText type="defaultSemiBold">app</ThemedText> to{' '}
-          <ThemedText type="defaultSemiBold">app-example</ThemedText>.
-        </ThemedText>
-      </ThemedView>
-    </ParallaxScrollView>
+      </Svg>
+      <View style={styles.container}>
+
+        {/* Overview content */}
+        <View style={styles.statusRow}>
+          <View style={styles.progressContainer}>
+            <View style={styles.progressOuter}>
+              <View
+                style={[styles.progressInner, { height: `${fillPercentage}%` }]}
+              />
+            </View>
+            <Text style={styles.percentageText}>
+              {fillPercentage.toFixed(0)}%
+            </Text>
+          </View>
+
+          <View style={styles.statsBox}>
+            <Text style={styles.title}>Pellet Status</Text>
+            <Text style={styles.label}>
+              Füllstand:
+              <Text style={styles.value}>{` ` + fillPercentage.toFixed(0)}%</Text>
+            </Text>
+            <Text style={styles.label}>
+              &#x2300; Abstand zu den Pellets:
+              <Text style={styles.value}>
+                {` ` + averageDistance.toFixed(1)} cm
+              </Text>
+            </Text>
+            <Text style={styles.label}>
+              Letzte Messung:
+              <Text style={styles.value}>
+                {` ` + formatDateTime(latestReading?.timestamp || '')}
+              </Text>
+            </Text>
+            <Text
+              style={[
+                styles.statusText,
+                {
+                  color: averageDistance >= 75 ? Colors.warning : Colors.success,
+                },
+              ]}
+            >
+              {averageDistance >= 75 ? "Benötigt bald Nachschub" : "Füllstand OK"}
+            </Text>
+          </View>
+        </View>
+
+        {/* List Section */}
+        <View style={styles.measurementsList}>
+          <View style={styles.tableWrapper}>
+            <ThemedText type="subtitle" style={styles.tableTitle}>
+              Letzte 5 Messungen
+            </ThemedText>
+
+            <View style={styles.table}>
+              {/* Table Header */}
+              <View style={styles.tableRow}>
+                <Text style={[styles.tableCell, styles.tableHeader]}>Zeit</Text>
+                <Text style={[styles.tableCell, styles.tableHeader]}>Distanz (cm)</Text>
+              </View>
+
+              {/* Table Rows */}
+              {distanceMeasurements.slice(0, 5).map((item) => (
+                <View key={item.id} style={styles.tableRow}>
+                  <Text style={styles.tableCell}>
+                    {formatDateTime(item.timestamp)}
+                  </Text>
+                  <Text style={styles.tableCell}>{item.distance.toFixed(2)}</Text>
+                </View>
+              ))}
+            </View>
+          </View>
+        </View>
+
+      </View>
+    </View>
   );
 }
-
-const styles = StyleSheet.create({
-  titleContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-  },
-  stepContainer: {
-    gap: 8,
-    marginBottom: 8,
-  },
-  reactLogo: {
-    height: 178,
-    width: 290,
-    bottom: 0,
-    left: 0,
-    position: 'absolute',
-  },
-});
