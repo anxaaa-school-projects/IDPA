@@ -1,0 +1,12 @@
+{
+  "name": "api",
+  "version": "1.0.0",
+  "scripts": {
+    "new function": "supabase functions new function-name",
+    "deploy function": "supabase functions deploy function-name --project-ref your-project-id"
+  },
+  "dependencies": {
+    "@supabase/supabase-js": "^2.49.10"
+  },
+  "private": true
+}
