@@ -102,6 +102,12 @@ export function createStyles() {
       fontWeight: 'bold',
       backgroundColor: Colors.tableHeader,
     },
+    loadingContainer: {
+      flex: 1,
+      justifyContent: "center",
+      alignItems: "center",
+      padding: 20,
+    },
     notFoundContainer: {
       flex: 1,
       alignItems: 'center',
