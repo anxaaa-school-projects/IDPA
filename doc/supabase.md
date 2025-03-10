@@ -7,7 +7,8 @@ Note that I already have a Supabase account since I already used the platform fo
 **Contents:**
 
 * [Create the project on Supabase](#create-the-project-on-supabase)
-* [Create the necessary table(s)](#create-the-necessary-tables)
+* [Create the necessary table](#create-the-necessary-table)
+* [Grant access to Supabase table](#grant-access-to-supabase-table)
 * [Create an edge function](#create-an-edge-function)
 * [Create a database function](#create-a-database-function)
 
@@ -25,13 +26,23 @@ The settings I selected for the project can be seen in the image below.
 
 ![Supabase create new project](./resources/supabase/supabase-create-new-project.png)
 
-## Create the necessary table(s)
+## Create the necessary table
 
 On the left side in the Navigation select the tab "Table Editor". You'll find a green "Create a new table" button in the middle of your screen. Click on it to create a new table.
 
 The settings I selected for the table can be seen in the image below. Note that the column for `id` has the extra options "Is Unique" and "Is Identity".
 
 ![Supabase device_data table settings](./resources/supabase/supabase-device_data-table-settings.png)
+
+## Grant access to Supabase table
+
+In the left-hand navigation panel, select the "Table Editor" tab to access your tables.
+
+Next to the navigation panel, you'll see a list of all your tables. Hover over the table for which you want to edit the policies. Click on the three dots that appear, then select "View policies". This will display a list of all existing policies for that table.
+
+To create a new policy, click the "Create policy" button on the left side. Then, apply the settings shown in the image below to grant read access from external sources—such as the React Native mobile app used in this project.
+
+![Supabase read access policies for table](./resources/supabase/supabase-table-read-access-policy.png)
 
 ## Create an edge function
 
