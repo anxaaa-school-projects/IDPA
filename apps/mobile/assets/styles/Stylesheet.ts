@@ -102,6 +102,28 @@ export function createStyles() {
       fontWeight: 'bold',
       backgroundColor: Colors.tableHeader,
     },
+    testRowBackground: {
+      backgroundColor: Colors.tableBorder,
+    },
+    button: {
+      backgroundColor: Colors.primary,
+      paddingVertical: 12,
+      paddingHorizontal: 20,
+      borderRadius: 10,
+      alignItems: "center",
+      marginTop: 5,
+      marginBottom: 20,
+      shadowColor: Colors.black,
+      shadowOffset: { width: 0, height: 2 },
+      shadowOpacity: 0.2,
+      shadowRadius: 3,
+      elevation: 3,
+    },
+    buttonText: {
+      color: Colors.white,
+      fontSize: 16,
+      fontWeight: "600",
+    },
     loadingContainer: {
       flex: 1,
       justifyContent: "center",
