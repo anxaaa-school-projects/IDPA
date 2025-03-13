@@ -1,7 +1,13 @@
 import { Colors } from "@/assets/styles/Colors";
 import { createStyles } from "@/assets/styles/Stylesheet";
 import React, { PropsWithChildren, ReactElement } from "react";
-import { Image, StyleSheet, View } from "react-native";
+import {
+  Image,
+  KeyboardAvoidingView,
+  Platform,
+  StyleSheet,
+  View,
+} from "react-native";
 import Animated, {
   interpolate,
   useAnimatedRef,
@@ -33,17 +39,15 @@ export default function ParallaxScrollView({
   const scrollOffset = useScrollViewOffset(scrollRef);
   const bottom = useBottomTabOverflow();
 
-  const headerAnimatedStyle = useAnimatedStyle(() => {
-    return {
-      height: interpolate(
-        scrollOffset.value,
-        [0, MAX_HEADER_HEIGHT],
-        [MAX_HEADER_HEIGHT, MIN_HEADER_HEIGHT],
-        { extrapolateRight: "clamp" }
-      ),
-      overflow: "hidden",
-    };
-  });
+  const headerAnimatedStyle = useAnimatedStyle(() => ({
+    height: interpolate(
+      scrollOffset.value,
+      [0, MAX_HEADER_HEIGHT],
+      [MAX_HEADER_HEIGHT, MIN_HEADER_HEIGHT],
+      { extrapolateRight: "clamp" }
+    ),
+    overflow: "hidden",
+  }));
 
   const imageAnimatedStyle = useAnimatedStyle(() => {
     const scale = interpolate(
@@ -69,33 +73,41 @@ export default function ParallaxScrollView({
   });
 
   return (
-    <View style={styles.body}>
-      <Animated.View
-        style={[
-          parallaxScrollViewStyles.header,
-          { backgroundColor: headerBackgroundColor[colorScheme] },
-          headerAnimatedStyle,
-        ]}
-      >
+    <KeyboardAvoidingView
+      style={{ flex: 1 }}
+      behavior={Platform.OS === "ios" ? "padding" : "height"}
+      keyboardVerticalOffset={0}
+    >
+      <View style={styles.body}>
         <Animated.View
-          style={[parallaxScrollViewStyles.imageWrapper, imageAnimatedStyle]}
+          style={[
+            parallaxScrollViewStyles.header,
+            { backgroundColor: headerBackgroundColor[colorScheme] },
+            headerAnimatedStyle,
+          ]}
         >
-          {headerImage}
+          <Animated.View
+            style={[parallaxScrollViewStyles.imageWrapper, imageAnimatedStyle]}
+          >
+            {headerImage}
+          </Animated.View>
         </Animated.View>
-      </Animated.View>
 
-      <Animated.ScrollView
-        ref={scrollRef}
-        scrollEventThrottle={16}
-        scrollIndicatorInsets={{ bottom }}
-        contentContainerStyle={{
-          paddingBottom: bottom,
-          paddingTop: MAX_HEADER_HEIGHT + 10,
-        }}
-      >
-        <View style={parallaxScrollViewStyles.content}>{children}</View>
-      </Animated.ScrollView>
-    </View>
+        <Animated.ScrollView
+          ref={scrollRef}
+          scrollEventThrottle={16}
+          keyboardShouldPersistTaps="handled"
+          scrollIndicatorInsets={{ bottom }}
+          contentContainerStyle={{
+            paddingBottom: bottom,
+            paddingTop: MAX_HEADER_HEIGHT + 10,
+            flexGrow: 1,
+          }}
+        >
+          <View style={parallaxScrollViewStyles.content}>{children}</View>
+        </Animated.ScrollView>
+      </View>
+    </KeyboardAvoidingView>
   );
 }
 
@@ -117,7 +129,7 @@ const parallaxScrollViewStyles = StyleSheet.create({
 
     // Android shadow
     elevation: 5,
-    backgroundColor: "white", // Needed for shadow to appear
+    backgroundColor: "white",
   },
   imageWrapper: {
     marginLeft: IMAGE_LEFT_MARGIN,

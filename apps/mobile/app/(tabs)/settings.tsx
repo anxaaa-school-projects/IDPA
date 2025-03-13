@@ -3,10 +3,11 @@ import { createStyles } from "@/assets/styles/Stylesheet";
 import ParallaxScrollView from "@/components/ParallaxScrollView";
 import { IconSymbol } from "@/components/ui/IconSymbol";
 import { DistanceMeasurement } from "@/models/DistanceMeasurement.dto";
-import { SUPABASE_ANON_KEY, SUPABASE_URL } from "@env";
+import { OPENCAGE_API_KEY, SUPABASE_ANON_KEY, SUPABASE_URL } from "@env";
 import { createClient } from "@supabase/supabase-js";
+import * as Location from "expo-location";
 import { useState } from "react";
-import { Text, TouchableOpacity, View } from "react-native";
+import { Text, TextInput, TouchableOpacity, View } from "react-native";
 
 const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
@@ -17,7 +18,11 @@ export default function Settings() {
     DistanceMeasurement[]
   >([]);
   const [loading, setLoading] = useState(true);
+  const [manualLocation, setManualLocation] = useState("");
+  const [useManual, setUseManual] = useState(false);
+  const [nearbyGateways, setNearbyGateways] = useState<any[]>([]);
 
+  // Backend tests section
   const generateTestData = () => {
     return {
       device_id: "test",
@@ -62,6 +67,65 @@ export default function Settings() {
     return `${dd}.${MM}.${yyyy} ${hh}:${mm}:${ss}`;
   };
 
+  // Device connection section
+  const getDeviceLocation = async () => {
+    const { status } = await Location.requestForegroundPermissionsAsync();
+    if (status !== "granted") {
+      throw new Error("Permission to access location was denied");
+    }
+
+    const location = await Location.getCurrentPositionAsync({});
+    return {
+      lat: location.coords.latitude,
+      lon: location.coords.longitude,
+    };
+  };
+
+  const getCoordinatesFromAddress = async (address: string) => {
+    const response = await fetch(
+      `https://api.opencagedata.com/geocode/v1/json?q=${encodeURIComponent(
+        address
+      )}&key=${OPENCAGE_API_KEY}`
+    );
+    const data = await response.json();
+    const coords = data?.results?.[0]?.geometry;
+    if (coords) {
+      return { lat: coords.lat, lon: coords.lng };
+    } else {
+      throw new Error("Address not found");
+    }
+  };
+
+  const fetchNearbyGateways = async () => {
+    try {
+      setNearbyGateways([]);
+
+      const { lat, lon } = useManual
+        ? await getCoordinatesFromAddress(manualLocation)
+        : await getDeviceLocation();
+
+      const radius = 2500; // in meters
+      const apiUrl =
+        `https://mapper.packetbroker.net/api/v2/gateways?` +
+        `distanceWithin[latitude]=${lat}` +
+        `&distanceWithin[longitude]=${lon}` +
+        `&distanceWithin[distance]=${radius}` +
+        `&netID=000013&tenantID=ttn`;
+
+      console.log(apiUrl);
+
+      const res = await fetch(apiUrl, {
+        headers: { Accept: "application/json" },
+      });
+      if (!res.ok) throw new Error(`API error ${res.status}`);
+
+      const data = await res.json();
+      setNearbyGateways(data);
+    } catch (error) {
+      alert(`${error}`);
+    }
+  };
+
   return (
     <ParallaxScrollView
       headerBackgroundColor={{
@@ -71,7 +135,7 @@ export default function Settings() {
       headerImage={
         <IconSymbol
           size={310}
-          color={Colors.headerIcon}
+          color={Colors.lightGrey}
           name="chevron.left.forwardslash.chevron.right"
           style={styles.headerImage}
         />
@@ -97,7 +161,7 @@ export default function Settings() {
         style={styles.button}
         onPress={fetchAllDistanceMeasurements}
       >
-        <Text style={styles.buttonText}>Fetch all measurements</Text>
+        <Text style={styles.buttonText}>Alle Messungen abrufen</Text>
       </TouchableOpacity>
       {!loading ? (
         <>
@@ -129,6 +193,93 @@ export default function Settings() {
         </>
       ) : (
         <></>
+      )}
+
+      {/* device connection section */}
+      <Text style={styles.title}>Verbindung zum Gerät</Text>
+      <Text style={styles.label}>
+        <Text style={styles.value}>{`1. `}</Text>Überprüfe, ob sich ein
+        Empfänger für die Daten des Sensors in deiner Nähe befindet.
+      </Text>
+      <TouchableOpacity
+        style={styles.button}
+        onPress={() => setUseManual(!useManual)}
+      >
+        <Text style={styles.buttonText}>
+          {useManual
+            ? "Standort dieses Handys verwenden"
+            : "Standort manuell eingeben"}
+        </Text>
+      </TouchableOpacity>
+      {useManual ? (
+        <TextInput
+          style={styles.input}
+          placeholder="Adresse oder Ort eingeben"
+          placeholderTextColor={Colors.lightGrey}
+          value={manualLocation}
+          onChangeText={setManualLocation}
+        />
+      ) : null}
+      <TouchableOpacity style={styles.button} onPress={fetchNearbyGateways}>
+        <Text style={styles.buttonText}>TTN-Gateway-Abdeckung Prüfen</Text>
+      </TouchableOpacity>
+      <Text style={styles.label}>Gefundene Gateways innerhalb von 2.5 km:</Text>
+      {nearbyGateways.length > 0 ? (
+        <>
+          <View style={styles.table}>
+            <View style={styles.tableRow}>
+              <Text style={[styles.tableCell, styles.tableHeader]}>
+                Platzierung
+              </Text>
+              <Text style={[styles.tableCell, styles.tableHeader]}>Online</Text>
+              <Text style={[styles.tableCell, styles.tableHeader]}>
+                Letztes Update
+              </Text>
+            </View>
+            {nearbyGateways.map((gateway) => (
+              <View key={gateway.id} style={styles.tableRow}>
+                <Text style={styles.tableCell}>
+                  {gateway.antennaPlacement
+                    ? gateway.antennaPlacement.toLowerCase()
+                    : "unbekannt"}
+                </Text>
+                <Text style={styles.tableCell}>
+                  {gateway.online ? "✅" : "❌"}
+                </Text>
+                <Text style={styles.tableCell}>
+                  {formatDateTime(gateway.updatedAt)}
+                </Text>
+              </View>
+            ))}
+          </View>
+        </>
+      ) : (
+        <>
+          <Text
+            style={[
+              styles.label,
+              {
+                color: Colors.warning,
+              },
+            ]}
+          >
+            <Text style={styles.value}>{`1. `}</Text>Stelle sicher, dass du oben
+            auf den Button geklickt hast, um nach Gateways in deiner Nähe zu
+            suchen.
+          </Text>
+          <Text
+            style={[
+              styles.label,
+              {
+                color: Colors.warning,
+              },
+            ]}
+          >
+            <Text style={styles.value}>{`2. `}</Text>Wenn keine Ergebnisse
+            angezeigt werden, wurde kein TTN-Gateway in der Nähe des
+            ausgewählten Standorts gefunden.
+          </Text>
+        </>
       )}
     </ParallaxScrollView>
   );

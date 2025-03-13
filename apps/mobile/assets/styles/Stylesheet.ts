@@ -124,6 +124,17 @@ export function createStyles() {
       fontSize: 16,
       fontWeight: "600",
     },
+    input: {
+      height: 48,
+      borderColor: "#999",
+      borderWidth: 1,
+      borderRadius: 8,
+      paddingHorizontal: 12,
+      marginBottom: 12,
+      fontSize: 16,
+      backgroundColor: "#fff",
+      color: "#000",
+    },
     loadingContainer: {
       flex: 1,
       justifyContent: "center",

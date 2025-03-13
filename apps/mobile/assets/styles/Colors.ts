@@ -9,7 +9,7 @@ export const Colors = {
   tableBorder: "#DDDDDD",
   headerLight: "#D0D0D0",
   headerDark: "#353636",
-  headerIcon: "#808080",
+  lightGrey: "#808080",
   white: "#FFF",
   black: "#000"
 }
