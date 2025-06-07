@@ -7,6 +7,7 @@ import { useFocusEffect } from "expo-router";
 import { useCallback, useState } from "react";
 import {Dimensions, Text, View} from "react-native";
 import Svg, { Path } from "react-native-svg";
+import LoadingSpinner from '@/components/LoadingSpinner'
 
 const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
@@ -89,78 +90,80 @@ export default function HomeScreen() {
         />
       </Svg>
       <View style={styles.container}>
-
-        {/* Overview content */}
-        <View style={styles.statusRow}>
-          <View style={styles.progressContainer}>
-            <View style={styles.progressOuter}>
-              <View
-                style={[styles.progressInner, { height: `${fillPercentage}%` }]}
-              />
-            </View>
-            <Text style={styles.percentageText}>
-              {fillPercentage.toFixed(0)}%
-            </Text>
-          </View>
-
-          <View style={styles.statsBox}>
-            <Text style={styles.title}>Pellet Status</Text>
-            <Text style={styles.label}>
-              Füllstand:
-              <Text style={styles.value}>{` ` + fillPercentage.toFixed(0)}%</Text>
-            </Text>
-            <Text style={styles.label}>
-              &#x2300; Abstand zu den Pellets:
-              <Text style={styles.value}>
-                {` ` + averageDistance.toFixed(1)} cm
-              </Text>
-            </Text>
-            <Text style={styles.label}>
-              Letzte Messung:
-              <Text style={styles.value}>
-                {` ` + formatDateTime(latestReading?.timestamp || '')}
-              </Text>
-            </Text>
-            <Text
-              style={[
-                styles.statusText,
-                {
-                  color: averageDistance >= 75 ? Colors.warning : Colors.success,
-                },
-              ]}
-            >
-              {averageDistance >= 75 ? "Benötigt bald Nachschub" : "Füllstand OK"}
-            </Text>
-          </View>
-        </View>
-
-        {/* List Section */}
-        <View style={styles.measurementsList}>
-          <View style={styles.tableWrapper}>
-            <ThemedText type="subtitle" style={styles.tableTitle}>
-              Letzte 5 Messungen
-            </ThemedText>
-
-            <View style={styles.table}>
-              {/* Table Header */}
-              <View style={styles.tableRow}>
-                <Text style={[styles.tableCell, styles.tableHeader]}>Zeit</Text>
-                <Text style={[styles.tableCell, styles.tableHeader]}>Distanz (cm)</Text>
+        { loading ? <>
+          <LoadingSpinner />
+        </> : <>
+          {/* Overview content */}
+          <View style={styles.statusRow}>
+            <View style={styles.progressContainer}>
+              <View style={styles.progressOuter}>
+                <View
+                  style={[styles.progressInner, { height: `${fillPercentage}%` }]}
+                />
               </View>
+              <Text style={styles.percentageText}>
+                {fillPercentage.toFixed(0)}%
+              </Text>
+            </View>
 
-              {/* Table Rows */}
-              {distanceMeasurements.slice(0, 5).map((item) => (
-                <View key={item.id} style={styles.tableRow}>
-                  <Text style={styles.tableCell}>
-                    {formatDateTime(item.timestamp)}
-                  </Text>
-                  <Text style={styles.tableCell}>{item.distance.toFixed(2)}</Text>
-                </View>
-              ))}
+            <View style={styles.statsBox}>
+              <Text style={styles.title}>Pellet Status</Text>
+              <Text style={styles.label}>
+                Füllstand:
+                <Text style={styles.value}>{` ` + fillPercentage.toFixed(0)}%</Text>
+              </Text>
+              <Text style={styles.label}>
+                &#x2300; Abstand zu den Pellets:
+                <Text style={styles.value}>
+                  {` ` + averageDistance.toFixed(1)} cm
+                </Text>
+              </Text>
+              <Text style={styles.label}>
+                Letzte Messung:
+                <Text style={styles.value}>
+                  {` ` + formatDateTime(latestReading?.timestamp || '')}
+                </Text>
+              </Text>
+              <Text
+                style={[
+                  styles.statusText,
+                  {
+                    color: averageDistance >= 75 ? Colors.warning : Colors.success,
+                  },
+                ]}
+              >
+                {averageDistance >= 75 ? "Benötigt bald Nachschub" : "Füllstand OK"}
+              </Text>
             </View>
           </View>
-        </View>
 
+          {/* List Section */}
+          <View style={styles.measurementsList}>
+            <View style={styles.tableWrapper}>
+              <ThemedText type="subtitle" style={styles.tableTitle}>
+                Letzte 5 Messungen
+              </ThemedText>
+
+              <View style={styles.table}>
+                {/* Table Header */}
+                <View style={styles.tableRow}>
+                  <Text style={[styles.tableCell, styles.tableHeader]}>Zeit</Text>
+                  <Text style={[styles.tableCell, styles.tableHeader]}>Distanz (cm)</Text>
+                </View>
+
+                {/* Table Rows */}
+                {distanceMeasurements.slice(0, 5).map((item) => (
+                  <View key={item.id} style={styles.tableRow}>
+                    <Text style={styles.tableCell}>
+                      {formatDateTime(item.timestamp)}
+                    </Text>
+                    <Text style={styles.tableCell}>{item.distance.toFixed(2)}</Text>
+                  </View>
+                ))}
+              </View>
+            </View>
+          </View>
+        </> }
       </View>
     </View>
   );
