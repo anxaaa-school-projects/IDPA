@@ -1,20 +1,24 @@
-import type { PropsWithChildren, ReactElement } from 'react';
-import {StyleSheet, View} from 'react-native';
+import { Colors } from "@/assets/styles/Colors";
+import { createStyles } from "@/assets/styles/Stylesheet";
+import React, { PropsWithChildren, ReactElement } from "react";
+import { Image, StyleSheet, View } from "react-native";
 import Animated, {
   interpolate,
   useAnimatedRef,
   useAnimatedStyle,
   useScrollViewOffset,
-} from 'react-native-reanimated';
-import { createStyles } from "@/assets/styles/Stylesheet";
+} from "react-native-reanimated";
 
-import { useBottomTabOverflow } from '@/components/ui/TabBarBackground';
-import { useColorScheme } from '@/hooks/useColorScheme';
+import { useBottomTabOverflow } from "@/components/ui/TabBarBackground";
+import { useColorScheme } from "@/hooks/useColorScheme";
 
-const HEADER_HEIGHT = 250;
+const MAX_HEADER_HEIGHT = 180;
+const MIN_HEADER_HEIGHT = 120;
+const IMAGE_LEFT_MARGIN = 24;
+const IMAGE_BOTTOM_MARGIN = 10;
 
 type Props = PropsWithChildren<{
-  headerImage: ReactElement;
+  headerImage: ReactElement<Image["props"]>;
   headerBackgroundColor: { dark: string; light: string };
 }>;
 
@@ -24,43 +28,71 @@ export default function ParallaxScrollView({
   headerBackgroundColor,
 }: Props) {
   const styles = createStyles();
-
-  const colorScheme = useColorScheme() ?? 'light';
+  const colorScheme = useColorScheme() ?? "light";
   const scrollRef = useAnimatedRef<Animated.ScrollView>();
   const scrollOffset = useScrollViewOffset(scrollRef);
   const bottom = useBottomTabOverflow();
+
   const headerAnimatedStyle = useAnimatedStyle(() => {
+    return {
+      height: interpolate(
+        scrollOffset.value,
+        [0, MAX_HEADER_HEIGHT],
+        [MAX_HEADER_HEIGHT, MIN_HEADER_HEIGHT],
+        { extrapolateRight: "clamp" }
+      ),
+      overflow: "hidden",
+    };
+  });
+
+  const imageAnimatedStyle = useAnimatedStyle(() => {
+    const scale = interpolate(
+      scrollOffset.value,
+      [0, MAX_HEADER_HEIGHT],
+      [1, 0.6],
+      { extrapolateRight: "clamp" }
+    );
+
     return {
       transform: [
         {
           translateY: interpolate(
             scrollOffset.value,
-            [-HEADER_HEIGHT, 0, HEADER_HEIGHT],
-            [-HEADER_HEIGHT / 2, 0, HEADER_HEIGHT * 0.75]
+            [0, MAX_HEADER_HEIGHT],
+            [0, -20],
+            { extrapolateRight: "clamp" }
           ),
         },
-        {
-          scale: interpolate(scrollOffset.value, [-HEADER_HEIGHT, 0, HEADER_HEIGHT], [2, 1, 1]),
-        },
+        { scale },
       ],
     };
   });
 
   return (
     <View style={styles.body}>
+      <Animated.View
+        style={[
+          parallaxScrollViewStyles.header,
+          { backgroundColor: headerBackgroundColor[colorScheme] },
+          headerAnimatedStyle,
+        ]}
+      >
+        <Animated.View
+          style={[parallaxScrollViewStyles.imageWrapper, imageAnimatedStyle]}
+        >
+          {headerImage}
+        </Animated.View>
+      </Animated.View>
+
       <Animated.ScrollView
         ref={scrollRef}
         scrollEventThrottle={16}
         scrollIndicatorInsets={{ bottom }}
-        contentContainerStyle={{ paddingBottom: bottom }}>
-        <Animated.View
-          style={[
-            parallaxScrollViewStyles.header,
-            { backgroundColor: headerBackgroundColor[colorScheme] },
-            headerAnimatedStyle,
-          ]}>
-          {headerImage}
-        </Animated.View>
+        contentContainerStyle={{
+          paddingBottom: bottom,
+          paddingTop: MAX_HEADER_HEIGHT + 10,
+        }}
+      >
         <View style={parallaxScrollViewStyles.content}>{children}</View>
       </Animated.ScrollView>
     </View>
@@ -69,13 +101,34 @@ export default function ParallaxScrollView({
 
 const parallaxScrollViewStyles = StyleSheet.create({
   header: {
-    height: HEADER_HEIGHT,
-    overflow: 'hidden',
+    position: "absolute",
+    top: 0,
+    left: 0,
+    right: 0,
+    zIndex: 10,
+    justifyContent: "flex-end",
+    alignItems: "flex-start",
+
+    // iOS shadow
+    shadowColor: Colors.black,
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.15,
+    shadowRadius: 6,
+
+    // Android shadow
+    elevation: 5,
+    backgroundColor: "white", // Needed for shadow to appear
+  },
+  imageWrapper: {
+    marginLeft: IMAGE_LEFT_MARGIN,
+    marginBottom: IMAGE_BOTTOM_MARGIN,
+    justifyContent: "flex-end",
+    alignItems: "flex-start",
   },
   content: {
     flex: 1,
-    padding: 32,
+    padding: 24,
     gap: 16,
-    overflow: 'hidden',
+    overflow: "hidden",
   },
 });
