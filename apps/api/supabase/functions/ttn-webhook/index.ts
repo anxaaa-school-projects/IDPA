@@ -4,13 +4,12 @@ serve(async (req) => {
   // Receive data from TTN
   const body = await req.json()
 
-  console.log("Parsed body:", JSON.stringify(body, null, 2))
-
   const deviceId = body.end_device_ids?.device_id
   const distance = body.uplink_message?.decoded_payload?.distance
+  const batteryStatus = body.uplink_message?.decoded_payload?.batteryStatus
   const timestamp = body.received_at
 
-  if (!deviceId || distance === undefined || !timestamp) {
+  if (!deviceId || distance === undefined || !batteryStatus || !timestamp) {
     console.error("Missing data fields")
     return new Response("Bad Request", { status: 400 })
   }
@@ -30,6 +29,7 @@ serve(async (req) => {
     body: JSON.stringify({
       device_id: deviceId,
       distance: distance,
+      battery_status: batteryStatus,
       timestamp: timestamp,
     }),
   })
@@ -44,9 +44,8 @@ serve(async (req) => {
 
   // Clean up logic to prevent the table from exceeding the supabase disk space
   const today = new Date().toISOString().split("T")[0]
-  console.log("Today:", today)
 
-  const cleanupRes = await fetch(
+    const cleanupRes = await fetch(
     `${supabaseUrl}/rest/v1/rpc/delete_old_data`,
     {
       method: "POST",
@@ -55,10 +54,13 @@ serve(async (req) => {
     }
   )
 
-  console.log(cleanupRes)
+  if (!cleanupRes.ok) {
+    const errorBody = await cleanupRes.text()
+    console.error("Cleanup failed:", errorBody)
+    return new Response("Error cleaning up", { status: 500 })
+  }
 
-  const cleanupResult = await cleanupRes.json()
-  console.log("Cleanup result:", cleanupResult)
+  console.log("Cleanup completed", cleanupRes)
 
   return new Response("OK", { status: 200 })
 })
