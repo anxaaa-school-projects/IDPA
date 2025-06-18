@@ -9,10 +9,13 @@ import { useFocusEffect } from "expo-router";
 import { useCallback, useState } from "react";
 import { Dimensions, Text, View } from "react-native";
 import Svg, { Path } from "react-native-svg";
+import * as Notifications from "expo-notifications";
+import { useEffect } from "react";
+import { Platform } from "react-native";
 
 const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
-const CRITICAL_DISTANCE: number = 50;
+const CRITICAL_DISTANCE: number = 40;
 
 export default function HomeScreen() {
   const styles = createStyles();
@@ -21,6 +24,40 @@ export default function HomeScreen() {
     DistanceMeasurement[]
   >([]);
   const [loading, setLoading] = useState(true);
+  const [expoPushToken, setExpoPushToken] = useState<string | null>(null);
+
+  async function registerForPushNotificationsAsync() {
+    let token;
+
+    if (Platform.OS === 'android') {
+      await Notifications.setNotificationChannelAsync('default', {
+        name: 'default',
+        importance: Notifications.AndroidImportance.MAX,
+        vibrationPattern: [0, 250, 250, 250],
+        lightColor: '#FF231F7C',
+      });
+    }
+
+    // Check existing permissions using expo-notifications
+    const { status: existingStatus } = await Notifications.getPermissionsAsync();
+    let finalStatus = existingStatus;
+
+    if (existingStatus !== 'granted') {
+      const { status } = await Notifications.requestPermissionsAsync();
+      finalStatus = status;
+    }
+
+    if (finalStatus !== 'granted') {
+      alert('Failed to get push token for push notification!');
+      return null;
+    }
+
+    token = (await Notifications.getExpoPushTokenAsync()).data;
+    console.log('Expo push token:', token);
+
+    return token;
+  }
+
 
   const fetchDistanceMeasurements = async () => {
     const { data, error } = await supabase
@@ -72,6 +109,42 @@ export default function HomeScreen() {
     0,
     Math.min(100, 100 - (averageDistance / CRITICAL_DISTANCE) * 100)
   );
+
+  useEffect(() => {
+    Notifications.setNotificationHandler({
+      handleNotification: async () => ({
+        shouldShowAlert: true,
+        shouldPlaySound: true,
+        shouldSetBadge: false,
+        shouldShowBanner: true,
+        shouldShowList: false,
+      }),
+    });
+
+    registerForPushNotificationsAsync().then(token => setExpoPushToken(token));
+
+    if (!loading && averageDistance >= CRITICAL_DISTANCE) {
+      Notifications.scheduleNotificationAsync({
+        content: {
+          title: "Pellet Nachschub benötigt!",
+          body: `Der Füllstand ist kritisch: ${averageDistance.toFixed(1)} cm`,
+          sound: true,
+          priority: Notifications.AndroidNotificationPriority.HIGH,
+        },
+        trigger: null,
+      });
+    } else if (!loading && isBatteryLow(distanceMeasurements[0].battery_status)) {
+      Notifications.scheduleNotificationAsync({
+        content: {
+          title: "Batterie muss ausgewechselt werden!",
+          body: `Die Batterie hat nicht mehr genug Akku, um den Sensor zu betreiben`,
+          sound: true,
+          priority: Notifications.AndroidNotificationPriority.HIGH,
+        },
+        trigger: null,
+      });
+    }
+  }, [loading, distanceMeasurements, averageDistance]);
 
   return (
     <View style={styles.body}>
@@ -141,9 +214,9 @@ export default function HomeScreen() {
                     },
                   ]}
                 >
-                  {averageDistance >= CRITICAL_DISTANCE
-                    ? "Batteriestand OK"
-                    : "Batterie Kapazität kritisch"}
+                  {isBatteryLow(distanceMeasurements[0].battery_status)
+                    ? "Batterie Kapazität kritisch"
+                    : "Batteriestand OK"}
                 </Text>
                 <Text
                   style={[
