@@ -46,6 +46,10 @@ export default function HomeScreen() {
     }, [])
   );
 
+  const isBatteryLow = (battery_status: string): boolean => {
+    return battery_status === "LOW";
+  }
+
   const formatDateTime = (dateString: string): string => {
     const date = new Date(dateString);
     const dd = String(date.getDate()).padStart(2, "0");
@@ -68,8 +72,6 @@ export default function HomeScreen() {
     0,
     Math.min(100, 100 - (averageDistance / CRITICAL_DISTANCE) * 100)
   );
-
-  const latestReading = distanceMeasurements[0];
 
   return (
     <View style={styles.body}>
@@ -125,8 +127,23 @@ export default function HomeScreen() {
                 <Text style={styles.label}>
                   Letzte Messung:
                   <Text style={styles.value}>
-                    {` ` + formatDateTime(latestReading?.timestamp || "")}
+                    {` ` + formatDateTime(distanceMeasurements[0]?.timestamp || "")}
                   </Text>
+                </Text>
+                <Text
+                  style={[
+                    styles.statusText,
+                    {
+                      color:
+                        isBatteryLow(distanceMeasurements[0].battery_status)
+                          ? Colors.warning
+                          : Colors.success,
+                    },
+                  ]}
+                >
+                  {averageDistance >= CRITICAL_DISTANCE
+                    ? "Batteriestand OK"
+                    : "Batterie Kapazität kritisch"}
                 </Text>
                 <Text
                   style={[
@@ -140,7 +157,7 @@ export default function HomeScreen() {
                   ]}
                 >
                   {averageDistance >= CRITICAL_DISTANCE
-                    ? "Benötigt bald Nachschub"
+                    ? "Benötigt Pellet-Nachschub"
                     : "Füllstand OK"}
                 </Text>
               </View>

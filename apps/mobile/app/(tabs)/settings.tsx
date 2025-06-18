@@ -26,7 +26,8 @@ export default function Settings() {
   const generateTestData = () => {
     return {
       device_id: "test",
-      distance: Math.random() * 80,
+      distance: Math.random() * 100,
+      battery_status: "OK",
       timestamp: new Date().toISOString(),
     };
   };
