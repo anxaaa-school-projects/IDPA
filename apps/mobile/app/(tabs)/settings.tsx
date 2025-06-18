@@ -8,6 +8,8 @@ import { createClient } from "@supabase/supabase-js";
 import * as Location from "expo-location";
 import { useState } from "react";
 import { Text, TextInput, TouchableOpacity, View } from "react-native";
+import * as Notifications from "expo-notifications";
+import { useEffect } from "react";
 
 const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
@@ -127,6 +129,30 @@ export default function Settings() {
     }
   };
 
+  const sendTestNotification = () => {
+    Notifications.scheduleNotificationAsync({
+      content: {
+        title: "Test Benachrichtigung",
+        body: `Dies ist ein Test.`,
+        sound: true,
+        priority: Notifications.AndroidNotificationPriority.HIGH,
+      },
+      trigger: null,
+    });
+  }
+
+  useEffect(() => {
+    Notifications.setNotificationHandler({
+      handleNotification: async () => ({
+        shouldShowAlert: true,
+        shouldPlaySound: true,
+        shouldSetBadge: false,
+        shouldShowBanner: true,
+        shouldShowList: false,
+      }),
+    });
+  }, []);
+
   return (
     <ParallaxScrollView
       headerBackgroundColor={{
@@ -142,6 +168,12 @@ export default function Settings() {
         />
       }
     >
+      {/*Notification settings section */}
+      <Text style={styles.title}>Benachrichtigungen</Text>
+      <TouchableOpacity style={styles.button} onPress={sendTestNotification}>
+        <Text style={styles.buttonText}>Test Benachrichtigung senden</Text>
+      </TouchableOpacity>
+
       {/* Backend tests section */}
       <Text style={styles.title}>Backend Tests</Text>
       {/* Test data retrieval from Supabase */}
