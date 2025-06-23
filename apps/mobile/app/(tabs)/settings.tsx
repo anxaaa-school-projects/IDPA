@@ -8,8 +8,6 @@ import { createClient } from "@supabase/supabase-js";
 import * as Location from "expo-location";
 import { useState } from "react";
 import { Text, TextInput, TouchableOpacity, View } from "react-native";
-import * as Notifications from "expo-notifications";
-import { useEffect } from "react";
 
 const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
@@ -107,7 +105,7 @@ export default function Settings() {
         ? await getCoordinatesFromAddress(manualLocation)
         : await getDeviceLocation();
 
-      const radius = 2500; // in meters
+      const radius = 2000; // in meters
       const apiUrl =
         `https://mapper.packetbroker.net/api/v2/gateways?` +
         `distanceWithin[latitude]=${lat}` +
@@ -129,30 +127,6 @@ export default function Settings() {
     }
   };
 
-  const sendTestNotification = () => {
-    Notifications.scheduleNotificationAsync({
-      content: {
-        title: "Test Benachrichtigung",
-        body: `Dies ist ein Test.`,
-        sound: true,
-        priority: Notifications.AndroidNotificationPriority.HIGH,
-      },
-      trigger: null,
-    });
-  }
-
-  useEffect(() => {
-    Notifications.setNotificationHandler({
-      handleNotification: async () => ({
-        shouldShowAlert: true,
-        shouldPlaySound: true,
-        shouldSetBadge: false,
-        shouldShowBanner: true,
-        shouldShowList: false,
-      }),
-    });
-  }, []);
-
   return (
     <ParallaxScrollView
       headerBackgroundColor={{
@@ -168,12 +142,6 @@ export default function Settings() {
         />
       }
     >
-      {/*Notification settings section */}
-      <Text style={styles.title}>Benachrichtigungen</Text>
-      <TouchableOpacity style={styles.button} onPress={sendTestNotification}>
-        <Text style={styles.buttonText}>Test Benachrichtigung senden</Text>
-      </TouchableOpacity>
-
       {/* Backend tests section */}
       <Text style={styles.title}>Backend Tests</Text>
       {/* Test data retrieval from Supabase */}
@@ -254,9 +222,9 @@ export default function Settings() {
         />
       ) : null}
       <TouchableOpacity style={styles.button} onPress={fetchNearbyGateways}>
-        <Text style={styles.buttonText}>TTN-Gateway-Abdeckung Prüfen</Text>
+        <Text style={styles.buttonText}>TTN-Gateway-Abdeckung prüfen</Text>
       </TouchableOpacity>
-      <Text style={styles.label}>Gefundene Gateways innerhalb von 2.5 km:</Text>
+      <Text style={styles.label}>Gefundene Gateways innerhalb von 2 km:</Text>
       {nearbyGateways.length > 0 ? (
         <>
           <View style={styles.table}>

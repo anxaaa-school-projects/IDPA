@@ -5,13 +5,14 @@ import { ThemedText } from "@/components/ThemedText";
 import { DistanceMeasurement } from "@/models/DistanceMeasurement.dto";
 import { SUPABASE_ANON_KEY, SUPABASE_URL } from "@env";
 import { createClient } from "@supabase/supabase-js";
-import { useFocusEffect } from "expo-router";
-import { useCallback, useState } from "react";
+import {useCallback, useState} from "react";
 import { Dimensions, Text, View } from "react-native";
 import Svg, { Path } from "react-native-svg";
 import * as Notifications from "expo-notifications";
-import { useEffect } from "react";
-import { Platform } from "react-native";
+import { useEffect, useRef } from "react";
+import { getDeviceId } from "@/services/device";
+import { setupNotificationHandlers, registerForPushNotificationsAsync, sendLocalNotificationForDistance, sendLocalNotificationForBattery } from '@/services/notification';
+import {useFocusEffect} from "expo-router";
 
 const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
@@ -25,39 +26,8 @@ export default function HomeScreen() {
   >([]);
   const [loading, setLoading] = useState(true);
   const [expoPushToken, setExpoPushToken] = useState<string | null>(null);
-
-  async function registerForPushNotificationsAsync() {
-    let token;
-
-    if (Platform.OS === 'android') {
-      await Notifications.setNotificationChannelAsync('default', {
-        name: 'default',
-        importance: Notifications.AndroidImportance.MAX,
-        vibrationPattern: [0, 250, 250, 250],
-        lightColor: '#FF231F7C',
-      });
-    }
-
-    // Check existing permissions using expo-notifications
-    const { status: existingStatus } = await Notifications.getPermissionsAsync();
-    let finalStatus = existingStatus;
-
-    if (existingStatus !== 'granted') {
-      const { status } = await Notifications.requestPermissionsAsync();
-      finalStatus = status;
-    }
-
-    if (finalStatus !== 'granted') {
-      alert('Failed to get push token for push notification!');
-      return null;
-    }
-
-    token = (await Notifications.getExpoPushTokenAsync()).data;
-    console.log('Expo push token:', token);
-
-    return token;
-  }
-
+  const notificationListener = useRef<Notifications.EventSubscription | null>(null);
+  const responseListener = useRef<Notifications.EventSubscription | null>(null);
 
   const fetchDistanceMeasurements = async () => {
     const { data, error } = await supabase
@@ -76,13 +46,6 @@ export default function HomeScreen() {
     setLoading(false);
   };
 
-  // Refresh accounts every time someone navigates to this page.
-  useFocusEffect(
-    useCallback(() => {
-      fetchDistanceMeasurements();
-    }, [])
-  );
-
   const isBatteryLow = (battery_status: string): boolean => {
     return battery_status === "LOW";
   }
@@ -100,9 +63,9 @@ export default function HomeScreen() {
   const averageDistance =
     distanceMeasurements.length > 0
       ? distanceMeasurements.reduce(
-          (sum, measurement) => sum + measurement.distance,
-          0
-        ) / distanceMeasurements.length
+      (sum, measurement) => sum + measurement.distance,
+      0
+    ) / distanceMeasurements.length
       : 0;
 
   const fillPercentage = Math.max(
@@ -111,40 +74,59 @@ export default function HomeScreen() {
   );
 
   useEffect(() => {
-    Notifications.setNotificationHandler({
-      handleNotification: async () => ({
-        shouldShowAlert: true,
-        shouldPlaySound: true,
-        shouldSetBadge: false,
-        shouldShowBanner: true,
-        shouldShowList: false,
-      }),
-    });
+    // One-time initialization
+    const initialize = async () => {
+      await fetchDistanceMeasurements();
 
-    registerForPushNotificationsAsync().then(token => setExpoPushToken(token));
+      setupNotificationHandlers();
 
-    if (!loading && averageDistance >= CRITICAL_DISTANCE) {
-      Notifications.scheduleNotificationAsync({
-        content: {
-          title: "Pellet Nachschub benötigt!",
-          body: `Der Füllstand ist kritisch: ${averageDistance.toFixed(1)} cm`,
-          sound: true,
-          priority: Notifications.AndroidNotificationPriority.HIGH,
-        },
-        trigger: null,
+      const token = await registerForPushNotificationsAsync();
+      if (token) {
+        const deviceId = await getDeviceId();
+        const { error } = await supabase
+          .from("push_tokens")
+          .upsert({ device_id: deviceId, token });
+        if (error) console.error("Error storing push token:", error);
+      }
+
+      notificationListener.current = Notifications.addNotificationReceivedListener(notification => {
+        console.log("Notification received:", notification);
       });
-    } else if (!loading && isBatteryLow(distanceMeasurements[0].battery_status)) {
-      Notifications.scheduleNotificationAsync({
-        content: {
-          title: "Batterie muss ausgewechselt werden!",
-          body: `Die Batterie hat nicht mehr genug Akku, um den Sensor zu betreiben`,
-          sound: true,
-          priority: Notifications.AndroidNotificationPriority.HIGH,
-        },
-        trigger: null,
+
+      responseListener.current = Notifications.addNotificationResponseReceivedListener(response => {
+        console.log("Notification response:", response);
       });
-    }
-  }, [loading, distanceMeasurements, averageDistance]);
+    };
+
+    initialize();
+
+    return () => {
+      notificationListener.current?.remove();
+      responseListener.current?.remove();
+    };
+  }, []);
+
+// Separate effect for condition checking
+  useEffect(() => {
+    const checkConditions = async () => {
+      if (!loading && averageDistance >= CRITICAL_DISTANCE) {
+        await sendLocalNotificationForDistance(averageDistance);
+      } else if (!loading && isBatteryLow(distanceMeasurements[0]?.battery_status)) {
+        await sendLocalNotificationForBattery();
+      }
+    };
+
+    checkConditions();
+  }, [loading, averageDistance, distanceMeasurements]);
+
+  useFocusEffect(
+    useCallback(() => {
+      const fetchData = async () => {
+        await fetchDistanceMeasurements();
+      };
+      fetchData();
+    }, [])
+  );
 
   return (
     <View style={styles.body}>
