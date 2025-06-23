@@ -11,7 +11,8 @@ const char *appEui = "0000000000000000";
 const char *appKey = "A11F6B68B452B8B178DF7DBA4A4A2D21";
 
 // LoRaWAN Interval
-const unsigned long interval = 180000; // Send every 3 minutes
+const unsigned long interval = 240000; // Send every 4 minutes
+unsigned long previousMillis = 0;
 
 char outStr[255];
 byte recvStatus = 0;
@@ -70,7 +71,7 @@ void loop() {
     // Read sensor
     int sensorValue = analogRead(sensorPin);
     float voltage = sensorValue * (5.0 / 1023.0);
-    float distance_cm = 27.86 * pow(voltage, -1.15);
+    float distance_cm = 61.573 * pow(voltage, -1.16);
 
     // Read battery status
     bool batteryLow = digitalRead(lboPin) == LOW;
